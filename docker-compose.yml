@@ -1,0 +1,107 @@
+services:
+  # Astronomer/Airflow stack
+  postgres-airflow:
+    container_name: lakehouse-rjd-airflow-dbt-postgres
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - ./DWH/airflow/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    networks:
+      - lakehouse-net
+
+  airflow-webserver:
+    container_name: lakehouse-rjd-airflow-dbt-webserver
+    build: .
+    command: webserver
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: "469a7ba548ad22916f97b69a132f5f8f"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./include:/usr/local/airflow/include
+      - ./plugins:/usr/local/airflow/plugins
+      - ./DWH/airflow/logs:/usr/local/airflow/logs
+    ports:
+      - "8080:8080"
+    networks:
+      - lakehouse-net
+
+  airflow-scheduler:
+    container_name: lakehouse-rjd-airflow-dbt-scheduler
+    build: .
+    command: scheduler
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./include:/usr/local/airflow/include
+      - ./plugins:/usr/local/airflow/plugins
+      - ./DWH/airflow/logs:/usr/local/airflow/logs
+    networks:
+      - lakehouse-net
+
+  # Trino - central SQL engine
+  trino:
+    container_name: lakehouse-rjd-airflow-dbt-trino
+    image: trinodb/trino:451
+    ports:
+      - "9080:8080"
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+      - ./DWH/iceberg:/iceberg/warehouse
+    environment:
+      - SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ACCOUNT}
+      - SNOWFLAKE_USER=${SNOWFLAKE_USER}
+      - SNOWFLAKE_PASSWORD=${SNOWFLAKE_PASSWORD}
+    networks:
+      - lakehouse-net
+
+  # Spark - processing engine
+  spark-master:
+    container_name: lakehouse-rjd-airflow-dbt-spark-master
+    image: apache/spark:3.5.1
+    ports:
+      - "7077:7077"
+      - "4040:4040"
+    volumes:
+      - ./spark/conf:/opt/spark/conf
+      - ./DWH/iceberg:/warehouse
+    networks:
+      - lakehouse-net
+
+  spark-worker:
+    container_name: lakehouse-rjd-airflow-dbt-spark-worker
+    image: apache/spark:3.5.1
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    volumes:
+      - ./spark/conf:/opt/spark/conf
+      - ./DWH/iceberg:/warehouse
+    networks:
+      - lakehouse-net
+
+networks:
+  lakehouse-net:
+    driver: bridge

@@ -1,0 +1,3 @@
+dbt-core
+dbt-trino
+dbt-snowflake

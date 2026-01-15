@@ -1,0 +1,30 @@
+# Core Airflow Providers
+apache-airflow-providers-amazon
+apache-airflow-providers-google
+apache-airflow-providers-microsoft-azure
+apache-airflow-providers-snowflake
+apache-airflow-providers-trino>=5.7.0
+
+# Cloud SDKs
+boto3
+botocore
+google-cloud-storage
+azure-storage-blob
+azure-core
+trino
+snowflake-connector-python
+snowflake-snowpark-python
+
+# dbt & Integration
+dbt-core
+dbt-snowflake
+astronomer-cosmos
+
+# Utilities
+python-dotenv
+requests
+pyarrow
+pyiceberg
+sqlfluff
+astro-run-dag
+typing-extensions

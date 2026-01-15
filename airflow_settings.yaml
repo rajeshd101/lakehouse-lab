@@ -1,0 +1,6 @@
+connections:
+  - conn_id: trino_default
+    conn_type: trino
+    host: lakehouse-rjd-airflow-dbt-trino
+    port: 8080
+    login: admin

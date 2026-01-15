@@ -54,3 +54,47 @@ dbt-run:
 	source dbt_project/dbt.env && \
 	cd dbt_project && \
 	exec /bin/bash
+
+.PHONY: services-up
+## Start Trino, Hive Metastore, and Spark services via @`docker-compose.yml`
+services-up:
+	docker compose up -d hive-metastore-db hive-metastore trino spark-master spark-worker
+
+.PHONY: services-down
+## Stop Trino, Hive Metastore, and Spark services via @`docker-compose.yml`
+services-down:
+	docker compose down
+
+.PHONY: astro-start
+## Start the Airflow stack via @`astro dev start`
+astro-start:
+	astro dev start
+
+.PHONY: astro-connect
+## Attach Astro containers to the shared Docker network @`lakehouse_lab_lakehouse-net`
+astro-connect:
+	@docker network connect lakehouse_lab_lakehouse-net lakehouse-rjd-airflow-webserver || true
+	@docker network connect lakehouse_lab_lakehouse-net lakehouse-rjd-airflow-scheduler || true
+
+.PHONY: astro-stop
+## Stop the Airflow stack via @`astro dev stop`
+astro-stop:
+	astro dev stop
+
+.PHONY: compose-up
+## Start full stack via @`docker-compose.yml`
+compose-up:
+	docker compose up -d
+
+.PHONY: compose-down
+## Stop full stack via @`docker-compose.yml`
+compose-down:
+	docker compose down
+
+.PHONY: dev-up
+## Start full stack via @`docker-compose.yml`
+dev-up: compose-up
+
+.PHONY: dev-down
+## Stop full stack via @`docker-compose.yml`
+dev-down: compose-down

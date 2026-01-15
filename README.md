@@ -17,5 +17,14 @@ The project is pre-configured with dependencies for:
 - **Google Cloud Storage**: `apache-airflow-providers-google`, `google-cloud-storage`
 - **Azure Blob Storage**: `apache-airflow-providers-microsoft-azure`, `azure-storage-blob`
 - **Snowflake**: `apache-airflow-providers-snowflake`, `snowflake-connector-python`, `snowflake-snowpark-python`
+- **Trino**: `apache-airflow-providers-trino`, `trino`
 
 See `include/connection_templates.md` for setup instructions.
+
+## Trino CLI (Local)
+This repo includes a lightweight Trino CLI wrapper for local use:
+
+```powershell
+tools\trino.cmd --version
+tools\trino.cmd --server http://localhost:8080 --catalog iceberg --schema default
+```

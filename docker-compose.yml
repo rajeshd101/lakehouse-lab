@@ -1,7 +1,7 @@
 services:
   # Astronomer/Airflow stack
   postgres-airflow:
-    container_name: lakehouse-rjd-airflow-dbt-postgres
+    container_name: lakehouse-rjd-airflow-postgres
     image: postgres:15
     environment:
       POSTGRES_USER: airflow
@@ -18,33 +18,116 @@ services:
       - lakehouse-net
 
   airflow-webserver:
-    container_name: lakehouse-rjd-airflow-dbt-webserver
+    container_name: lakehouse-rjd-airflow-webserver
     build: .
-    command: webserver
+    command: airflow api-server
     depends_on:
       postgres-airflow:
         condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:ADMIN
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /usr/local/airflow/simple_auth_manager_passwords.json
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
+      AIRFLOW__API__SECRET_KEY: "local-dev-api-secret"
+      AIRFLOW__API_AUTH__JWT_SECRET: "local-dev-jwt-secret"
       AIRFLOW__CORE__FERNET_KEY: "469a7ba548ad22916f97b69a132f5f8f"
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: admin
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+      TRINO_USER: admin
+      TRINO_CATALOG: iceberg
+      SCHEMA: ${SCHEMA}
     volumes:
       - ./dags:/usr/local/airflow/dags
       - ./include:/usr/local/airflow/include
       - ./plugins:/usr/local/airflow/plugins
       - ./DWH/airflow/logs:/usr/local/airflow/logs
+      - ./simple_auth_manager_passwords.json:/usr/local/airflow/simple_auth_manager_passwords.json
     ports:
       - "8080:8080"
+    restart: unless-stopped
     networks:
       - lakehouse-net
 
   airflow-scheduler:
-    container_name: lakehouse-rjd-airflow-dbt-scheduler
+    container_name: lakehouse-rjd-airflow-scheduler
     build: .
-    command: scheduler
+    command: airflow scheduler
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:ADMIN
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /usr/local/airflow/simple_auth_manager_passwords.json
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
+      AIRFLOW__API__SECRET_KEY: "local-dev-api-secret"
+      AIRFLOW__API_AUTH__JWT_SECRET: "local-dev-jwt-secret"
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+      TRINO_USER: admin
+      TRINO_CATALOG: iceberg
+      SCHEMA: ${SCHEMA}
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./include:/usr/local/airflow/include
+      - ./plugins:/usr/local/airflow/plugins
+      - ./DWH/airflow/logs:/usr/local/airflow/logs
+      - ./simple_auth_manager_passwords.json:/usr/local/airflow/simple_auth_manager_passwords.json
+    restart: unless-stopped
+    networks:
+      - lakehouse-net
+
+  airflow-dag-processor:
+    container_name: lakehouse-rjd-airflow-dag-processor
+    build: .
+    command: airflow dag-processor
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:ADMIN
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /usr/local/airflow/simple_auth_manager_passwords.json
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
+      AIRFLOW__API__SECRET_KEY: "local-dev-api-secret"
+      AIRFLOW__API_AUTH__JWT_SECRET: "local-dev-jwt-secret"
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+      TRINO_USER: admin
+      TRINO_CATALOG: iceberg
+      SCHEMA: ${SCHEMA}
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./include:/usr/local/airflow/include
+      - ./plugins:/usr/local/airflow/plugins
+      - ./DWH/airflow/logs:/usr/local/airflow/logs
+      - ./simple_auth_manager_passwords.json:/usr/local/airflow/simple_auth_manager_passwords.json
+    restart: unless-stopped
+    networks:
+      - lakehouse-net
+
+  airflow-init:
+    container_name: lakehouse-rjd-airflow-init
+    build: .
+    command: airflow db migrate
     depends_on:
       postgres-airflow:
         condition: service_healthy
@@ -52,17 +135,21 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:ADMIN
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /usr/local/airflow/simple_auth_manager_passwords.json
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
     volumes:
       - ./dags:/usr/local/airflow/dags
       - ./include:/usr/local/airflow/include
       - ./plugins:/usr/local/airflow/plugins
       - ./DWH/airflow/logs:/usr/local/airflow/logs
+      - ./simple_auth_manager_passwords.json:/usr/local/airflow/simple_auth_manager_passwords.json
     networks:
       - lakehouse-net
 
   # Trino - central SQL engine
   trino:
-    container_name: lakehouse-rjd-airflow-dbt-trino
+    container_name: lakehouse-rjd-airflow-trino
     image: trinodb/trino:451
     ports:
       - "9080:8080"
@@ -75,10 +162,49 @@ services:
       - SNOWFLAKE_PASSWORD=${SNOWFLAKE_PASSWORD}
     networks:
       - lakehouse-net
+    depends_on:
+      - hive-metastore
+    restart: unless-stopped
+
+  # Hive Metastore for Iceberg (public image)
+  hive-metastore-db:
+    container_name: lakehouse-rjd-airflow-hive-metastore-db
+    image: postgres:11
+    environment:
+      POSTGRES_DB: metastore
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+    volumes:
+      - ./DWH/hive-metastore/db:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - lakehouse-net
+
+  hive-metastore:
+    container_name: lakehouse-rjd-airflow-hive-metastore
+    image: apache/hive:3.1.3
+    depends_on:
+      - hive-metastore-db
+    ports:
+      - "9083:9083"
+    environment:
+      SERVICE_NAME: metastore
+      HIVE_METASTORE_DB_TYPE: postgres
+      HIVE_METASTORE_DB_HOST: hive-metastore-db
+      HIVE_METASTORE_DB_NAME: metastore
+      HIVE_METASTORE_DB_USER: hive
+      HIVE_METASTORE_DB_PASS: hive
+      HIVE_METASTORE_WAREHOUSE_DIR: /iceberg/warehouse
+      HIVE_SITE_CONF_hive_metastore_warehouse_dir: /iceberg/warehouse
+    volumes:
+      - ./DWH/iceberg:/iceberg/warehouse
+    restart: unless-stopped
+    networks:
+      - lakehouse-net
 
   # Spark - processing engine
   spark-master:
-    container_name: lakehouse-rjd-airflow-dbt-spark-master
+    container_name: lakehouse-rjd-airflow-spark-master
     image: apache/spark:3.5.1
     ports:
       - "7077:7077"
@@ -86,11 +212,12 @@ services:
     volumes:
       - ./spark/conf:/opt/spark/conf
       - ./DWH/iceberg:/warehouse
+    restart: unless-stopped
     networks:
       - lakehouse-net
 
   spark-worker:
-    container_name: lakehouse-rjd-airflow-dbt-spark-worker
+    container_name: lakehouse-rjd-airflow-spark-worker
     image: apache/spark:3.5.1
     depends_on:
       - spark-master
@@ -99,9 +226,11 @@ services:
     volumes:
       - ./spark/conf:/opt/spark/conf
       - ./DWH/iceberg:/warehouse
+    restart: unless-stopped
     networks:
       - lakehouse-net
 
 networks:
   lakehouse-net:
     driver: bridge
+

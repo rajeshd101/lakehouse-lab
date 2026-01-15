@@ -136,6 +136,9 @@ dbt_project/dbt_packages/
 dbt_project/logs/
 dbt_project/dbt_venv/
 
+# DWH
+DWH/
+
 # OS
 .DS_Store
 Thumbs.db

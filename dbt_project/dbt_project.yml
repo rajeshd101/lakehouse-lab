@@ -1,4 +1,4 @@
-name: 'my_dbt_project'
+name: 'lakehouse_rjd_dbt'
 version: '1.0.0'
 config-version: 2
 
@@ -17,6 +17,6 @@ clean-targets:
   - "dbt_packages"
 
 models:
-  my_dbt_project:
+  lakehouse_rjd_dbt:
     example:
       +materialized: view

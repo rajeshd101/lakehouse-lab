@@ -4,7 +4,14 @@ Supports: AWS S3, Google Cloud Storage, Azure Blob Storage, Trino, Snowflake, Gl
 Import and use: from data_eng_lib import *
 """
 
-import trino
+try:
+    import trino
+    from trino.auth import BasicAuthentication
+    HAS_TRINO = True
+except ImportError:
+    trino = None
+    BasicAuthentication = None
+    HAS_TRINO = False
 try:
     import snowflake.connector
     from snowflake.snowpark import Session
@@ -21,12 +28,21 @@ from google.cloud import storage as gcs
 from azure.storage.blob import BlobServiceClient
 from azure.core.credentials import AzureNamedKeyCredential
 
+# Load .env once so helpers can pull credentials automatically.
+load_dotenv()
+
 # =============================================================================
 # TRINO UTILITIES
 # =============================================================================
 
-def execute_trino_query(query: str, config: Dict[str, Any]) -> List:
+def execute_trino_query(query: str, config: Optional[Dict[str, Any]] = None) -> List:
     """Execute Trino query using provided config."""
+    if not HAS_TRINO:
+        raise ImportError("trino is not installed. Please install it with `pip install trino`.")
+    if config is None:
+        config = load_configs_from_env().get("trino")
+        if not config:
+            raise ValueError("Trino config not found in .env. Set TRINO_* variables.")
     conn = trino.dbapi.connect(**config)
     print(query)
     cursor = conn.cursor()
@@ -34,7 +50,7 @@ def execute_trino_query(query: str, config: Dict[str, Any]) -> List:
     cursor.execute(query)
     return cursor.fetchall()
 
-def run_trino_query_dq_check(query: str, config: Dict[str, Any]) -> None:
+def run_trino_query_dq_check(query: str, config: Optional[Dict[str, Any]] = None) -> None:
     """Run Trino query with data quality checks."""
     results = execute_trino_query(query, config)
     if len(results) == 0:
@@ -48,10 +64,14 @@ def run_trino_query_dq_check(query: str, config: Dict[str, Any]) -> None:
 # SNOWFLAKE UTILITIES
 # =============================================================================
 
-def execute_snowflake_query(query: str, connection_params: Dict[str, Any]) -> List:
+def execute_snowflake_query(query: str, connection_params: Optional[Dict[str, Any]] = None) -> List:
     """Execute Snowflake query using provided connection params."""
     if not HAS_SNOWFLAKE:
         raise ImportError("snowflake-connector-python is not installed. Please install it to use this function.")
+    if connection_params is None:
+        connection_params = load_configs_from_env().get("snowflake")
+        if not connection_params:
+            raise ValueError("Snowflake config not found in .env. Set SNOWFLAKE_* variables.")
     conn = snowflake.connector.connect(**connection_params)
     try:
         cursor = conn.cursor()
@@ -62,15 +82,19 @@ def execute_snowflake_query(query: str, connection_params: Dict[str, Any]) -> Li
         cursor.close()
         conn.close()
 
-def get_snowpark_session(connection_params: Dict[str, Any], schema: str = 'bootcamp') -> Any:
+def get_snowpark_session(connection_params: Optional[Dict[str, Any]] = None, schema: str = 'bootcamp') -> Any:
     """Create Snowpark session."""
     if not HAS_SNOWFLAKE:
         raise ImportError("snowflake-snowpark-python is not installed. Please install it to use this function.")
+    if connection_params is None:
+        connection_params = load_configs_from_env().get("snowflake")
+        if not connection_params:
+            raise ValueError("Snowflake config not found in .env. Set SNOWFLAKE_* variables.")
     params = connection_params.copy()
     params['schema'] = schema
     return Session.builder.configs(params).create()
 
-def run_snowflake_query_dq_check(query: str, connection_params: Dict[str, Any]) -> None:
+def run_snowflake_query_dq_check(query: str, connection_params: Optional[Dict[str, Any]] = None) -> None:
     """Run Snowflake query with data quality checks."""
     results = execute_snowflake_query(query, connection_params)
     if len(results) == 0:
@@ -319,8 +343,6 @@ def get_secret(secret_name: str, config: Optional[Dict] = None, region_name: str
 
 def load_configs_from_env(prefix: str = "") -> Dict[str, Dict]:
     """Load all cloud configs from environment variables."""
-    load_dotenv()
-    
     configs = {}
     
     # AWS Config
@@ -342,17 +364,18 @@ def load_configs_from_env(prefix: str = "") -> Dict[str, Dict]:
     }
     
     # Trino Config
-    configs['trino'] = {
-        'host': os.getenv(f"{prefix}TRINO_HOST"),
-        'port': int(os.getenv(f"{prefix}TRINO_PORT", 443)),
-        'user': os.getenv(f"{prefix}TRINO_USER"),
-        'http_scheme': 'https',
-        'catalog': os.getenv(f"{prefix}TRINO_CATALOG", 'academy'),
-        'auth': trino.auth.BasicAuthentication(
-            os.getenv(f"{prefix}TRINO_USER"), 
-            os.getenv(f"{prefix}TRINO_PASSWORD")
-        )
-    }
+    if HAS_TRINO:
+        trino_user = os.getenv(f"{prefix}TRINO_USER")
+        trino_password = os.getenv(f"{prefix}TRINO_PASSWORD")
+        configs['trino'] = {
+            'host': os.getenv(f"{prefix}TRINO_HOST"),
+            'port': int(os.getenv(f"{prefix}TRINO_PORT", 443)),
+            'user': trino_user,
+            'http_scheme': os.getenv(f"{prefix}TRINO_HTTP_SCHEME", "https"),
+            'catalog': os.getenv(f"{prefix}TRINO_CATALOG", 'academy'),
+            'schema': os.getenv(f"{prefix}SCHEMA", "default"),
+            'auth': BasicAuthentication(trino_user, trino_password) if trino_password else None
+        }
     
     # Snowflake Config
     configs['snowflake'] = {

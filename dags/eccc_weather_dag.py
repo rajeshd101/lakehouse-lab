@@ -50,10 +50,6 @@ def _create_table_if_not_exists(**kwargs):
     conn = get_trino_conn()
     cur = conn.cursor()
 
-    # Drop existing table to apply schema changes
-    cur.execute('DROP TABLE IF EXISTS iceberg.default.weather_raw')
-    logger.info('Dropped existing table iceberg.default.weather_raw')
-
     # Create table with hour partitioning and explicit location
     sql = """
     CREATE TABLE IF NOT EXISTS iceberg.default.weather_raw (

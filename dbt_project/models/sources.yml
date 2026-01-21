@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: iceberg
+    database: iceberg
+    schema: default
+    tables:
+      - name: weather_raw
+        description: "Raw weather data from ECCC API"
+        columns:
+          - name: id
+            tests:
+              - not_null
+          - name: observation_time
+            tests:
+              - not_null

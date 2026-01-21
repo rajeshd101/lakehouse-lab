@@ -36,7 +36,7 @@ services:
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
       AIRFLOW__API__SECRET_KEY: "local-dev-api-secret"
       AIRFLOW__API_AUTH__JWT_SECRET: "local-dev-jwt-secret"
-      AIRFLOW__CORE__FERNET_KEY: "469a7ba548ad22916f97b69a132f5f8f"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: admin
       TRINO_HOST: trino
@@ -158,31 +158,37 @@ services:
       - -c
       - |
         # Manage catalogs based on .env flags
+        # We use temporary copies to avoid deleting files on the host volume
+        mkdir -p /tmp/trino/catalog
+        cp /etc/trino/catalog/*.properties /tmp/trino/catalog/
+        
         if [ "$$ENABLE_ICEBERG" != "true" ]; then
-          rm -f /etc/trino/catalog/iceberg.properties
+          rm -f /tmp/trino/catalog/iceberg.properties
         fi
         if [ "$$ENABLE_SQLSERVER" != "true" ]; then
-          rm -f /etc/trino/catalog/sqlserver.properties
+          rm -f /tmp/trino/catalog/sqlserver.properties
         fi
         if [ "$$ENABLE_ORACLE" != "true" ]; then
-          rm -f /etc/trino/catalog/oracle.properties
+          rm -f /tmp/trino/catalog/oracle.properties
         fi
         if [ "$$ENABLE_SNOWFLAKE" != "true" ]; then
-          rm -f /etc/trino/catalog/snowflake.properties
+          rm -f /tmp/trino/catalog/snowflake.properties
         fi
         if [ "$$ENABLE_DATABRICKS" != "true" ]; then
-          rm -f /etc/trino/catalog/databricks.properties
+          rm -f /tmp/trino/catalog/databricks.properties
         fi
         if [ "$$ENABLE_AWS" != "true" ]; then
-          rm -f /etc/trino/catalog/aws.properties
+          rm -f /tmp/trino/catalog/aws.properties
         fi
         if [ "$$ENABLE_GCP" != "true" ]; then
-          rm -f /etc/trino/catalog/gcp.properties
+          rm -f /tmp/trino/catalog/gcp.properties
         fi
         if [ "$$ENABLE_AZURE" != "true" ]; then
-          rm -f /etc/trino/catalog/azure.properties
+          rm -f /tmp/trino/catalog/azure.properties
         fi
-        /usr/lib/trino/bin/run-trino
+        
+        # Run Trino with the filtered catalogs
+        /usr/lib/trino/bin/run-trino --etc-dir /etc/trino --data-dir /data/trino --catalog-dir /tmp/trino/catalog
     volumes:
       - ./trino/catalog:/etc/trino/catalog
       - ./DWH/iceberg:/iceberg/warehouse
@@ -299,7 +305,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=Sqlserver!Password123
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
     ports:
       - "1433:1433"
     volumes:
@@ -313,7 +319,7 @@ services:
     container_name: lakehouse-rjd-oracle
     image: gvenzl/oracle-free:latest
     environment:
-      - ORACLE_PASSWORD=Oracle!Password123
+      - ORACLE_PASSWORD=${ORACLE_PASSWORD}
     ports:
       - "1521:1521"
     volumes:

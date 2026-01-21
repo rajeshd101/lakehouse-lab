@@ -8,6 +8,24 @@ This project provides a complete, containerized Lakehouse environment for data e
 ### Prerequisites
 - **Docker** and **Docker Compose** installed.
 - At least **8GB of RAM** allocated to Docker.
+- **Cloud Credentials:** If you plan to connect to Snowflake, AWS, Azure, GCP, or Databricks, copy `.env.example` to `.env` and fill in your credentials.
+
+### Cloud Connection Setup
+1. **Copy the environment template:**
+   ```bash
+   cp .env.example .env
+   ```
+2. **Configure your providers:**
+   - **Iceberg:** Set `ENABLE_ICEBERG=true` (default: true).
+   - **SQL Server:** Set `ENABLE_SQLSERVER=true` (default: true).
+   - **Oracle:** Set `ENABLE_ORACLE=true` (default: true).
+   - **Snowflake:** Set `ENABLE_SNOWFLAKE=true` and fill in `SNOWFLAKE_*` variables.
+   - **AWS (S3/Glue):** Fill in `AWS_*` variables for S3 storage and Glue Metastore access.
+   - **GCP (GCS):** Provide the path to your service account JSON in `GOOGLE_APPLICATION_CREDENTIALS`.
+   - **Azure:** Fill in `AZURE_STORAGE_*` variables for Blob Storage integration.
+   - **Databricks:** Set `ENABLE_DATABRICKS=true` and fill in `DATABRICKS_*` variables.
+
+> **Note:** Catalogs are only loaded if their respective `ENABLE_*` flag is set to `true` in the `.env` file. If a flag is set to `false`, the corresponding catalog configuration will be removed from Trino during startup.
 
 ### Running the Project
 

@@ -153,6 +153,36 @@ services:
     image: trinodb/trino:451
     ports:
       - "9080:8080"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        # Manage catalogs based on .env flags
+        if [ "$$ENABLE_ICEBERG" != "true" ]; then
+          rm -f /etc/trino/catalog/iceberg.properties
+        fi
+        if [ "$$ENABLE_SQLSERVER" != "true" ]; then
+          rm -f /etc/trino/catalog/sqlserver.properties
+        fi
+        if [ "$$ENABLE_ORACLE" != "true" ]; then
+          rm -f /etc/trino/catalog/oracle.properties
+        fi
+        if [ "$$ENABLE_SNOWFLAKE" != "true" ]; then
+          rm -f /etc/trino/catalog/snowflake.properties
+        fi
+        if [ "$$ENABLE_DATABRICKS" != "true" ]; then
+          rm -f /etc/trino/catalog/databricks.properties
+        fi
+        if [ "$$ENABLE_AWS" != "true" ]; then
+          rm -f /etc/trino/catalog/aws.properties
+        fi
+        if [ "$$ENABLE_GCP" != "true" ]; then
+          rm -f /etc/trino/catalog/gcp.properties
+        fi
+        if [ "$$ENABLE_AZURE" != "true" ]; then
+          rm -f /etc/trino/catalog/azure.properties
+        fi
+        /usr/lib/trino/bin/run-trino
     volumes:
       - ./trino/catalog:/etc/trino/catalog
       - ./DWH/iceberg:/iceberg/warehouse
@@ -160,6 +190,23 @@ services:
       - SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ACCOUNT}
       - SNOWFLAKE_USER=${SNOWFLAKE_USER}
       - SNOWFLAKE_PASSWORD=${SNOWFLAKE_PASSWORD}
+      - SNOWFLAKE_ROLE=${SNOWFLAKE_ROLE}
+      - SNOWFLAKE_WAREHOUSE=${SNOWFLAKE_WAREHOUSE}
+      - SNOWFLAKE_DATABASE=${SNOWFLAKE_DATABASE}
+      - DATABRICKS_HOST=${DATABRICKS_HOST}
+      - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - ENABLE_ICEBERG=${ENABLE_ICEBERG}
+      - ENABLE_SQLSERVER=${ENABLE_SQLSERVER}
+      - ENABLE_ORACLE=${ENABLE_ORACLE}
+      - ENABLE_SNOWFLAKE=${ENABLE_SNOWFLAKE}
+      - ENABLE_DATABRICKS=${ENABLE_DATABRICKS}
+      - ENABLE_AWS=${ENABLE_AWS}
+      - ENABLE_GCP=${ENABLE_GCP}
+      - ENABLE_AZURE=${ENABLE_AZURE}
     networks:
       - lakehouse-net
     depends_on:

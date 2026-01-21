@@ -88,54 +88,54 @@ This lab implements a **Medallion Architecture** (Bronze/Silver/Gold) using:
 ### Detailed Architecture Diagram
 
 ```text
-                                     +---------------------------------------+
-                                     |           Airflow Orchestrator        |
-                                     |   (Scheduler, Worker, Webserver)      |
-                                     +---+--------------+--------------+-----+
-                                         |              |              |
-                  (1) Ingest             | (2) Process  | (3) Transform|
-                  +----------------------+              |              +----------------------+
-                  |                                     |                                     |
-                  v                                     v                                     v
-      +-----------+-----------+        +----------------+----------------+        +-----------+-----------+
-      | External Data Sources |        |         Spark Engine            |        |     dbt (on Trino)    |
-      | (APIs, S3, GCS, Azure)|        |    (Distributed Processing)     |        |  (Data Transformations)|
-      +-----------+-----------+        +----------------+----------------+        +-----------+-----------+
-                  |                                     |                                     |
-                  |                                     |                                     |
-                  +------------------+                  |                  +------------------+
-                                     |                  |                  |
-                                     v                  v                  v
-                               +-----+------------------+------------------+-----+
-                               |                 Trino Gateway                   |
-                               |            (Federated Query Engine)             |
-                               +---------+--------------+--------------+---------+
-                                         |              |              |
-                    +--------------------+              |              +--------------------+
-                    |                                   |                                   |
-                    v                                   v                                   v
-      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
-      |      SQL Server Catalog   |       |       Iceberg Catalog     |       |       Oracle Catalog      |
-      |    (Relational Source)    |       |      (Lakehouse Table)    |       |    (Relational Source)    |
-      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
-                    |                                   |                                   |
-                    | (JDBC)                            | (Iceberg API)                     | (JDBC)
-                    v                                   v                                   v
-      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
-      |    SQL Server Container   |       |      Hive Metastore       |       |      Oracle Container     |
-      |      (mssql-server)       |       |    (Metadata Management)  |       |       (oracle-free)       |
-      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
-                    |                                   |                                   |
-                    v                                   v                                   v
-      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
-      |    Local Data Volume      |       |    Local Iceberg Warehouse|       |    Local Data Volume      |
-      |   (./DWH/sqlserver)       |       |       (./DWH/iceberg)     |       |     (./DWH/oracle)        |
-      +---------------------------+       +---------------------------+       +---------------------------+
+                                     +---------------------------------------------------+
+                                     |              Airflow Orchestrator                 |
+                                     |       (DAGs, Scheduler, Worker, Webserver)        |
+                                     +---+-------------------+-------------------+-------+
+                                         |                   |                   |
+                  (1) INGEST             | (2) PROCESS       | (3) TRANSFORM     | (4) MONITOR
+                  +----------------------+                   |                   +----------------------+
+                  |                                          |                                          |
+                  v                                          v                                          v
+      +-----------+-----------+             +----------------+----------------+             +-----------+-----------+
+      | External Data Sources |             |         Spark Engine            |             |     dbt (on Trino)    |
+      | (APIs, S3, GCS, Azure)|             |    (Distributed Processing)     |             |  (Data Transformations)|
+      +-----------+-----------+             +----------------+----------------+             +-----------+-----------+
+                  |                                          |                                          |
+                  | (Raw Data)                               | (Iceberg API / Thrift)                   | (SQL / JDBC)
+                  v                                          v                                          v
+      +-----------+------------------------------------------+------------------------------------------+-----------+
+      |                                             Trino Gateway                                                   |
+      |                                       (Federated Query Engine)                                              |
+      +-----------+------------------------------------------+------------------------------------------+-----------+
+                  |                                          |                                          |
+                  | (JDBC Connector)                         | (Iceberg Connector)                      | (JDBC Connector)
+                  v                                          v                                          v
+      +-----------+-----------+             +----------------+----------------+             +-----------+-----------+
+      |   SQL Server Catalog  |             |        Iceberg Catalog          |             |     Oracle Catalog    |
+      |  (Relational Source)  |             |       (Lakehouse Tables)        |             |  (Relational Source)  |
+      +-----------+-----------+             +----------------+----------------+             +-----------+-----------+
+                  |                                          |                                          |
+                  | (Port 1433)                              | (Port 9083)                              | (Port 1521)
+                  v                                          v                                          v
+      +-----------+-----------+             +----------------+----------------+             +-----------+-----------+
+      |  SQL Server Container |             |        Hive Metastore           |             |    Oracle Container   |
+      |     (mssql-server)    |             |     (Metadata Management)       |             |      (oracle-free)    |
+      +-----------+-----------+             +----------------+----------------+             +-----------+-----------+
+                  |                                          |                                          |
+                  | (Data Persistence)                       | (Metadata Persistence)                   | (Data Persistence)
+                  v                                          v                                          v
+      +-----------+-----------+             +----------------+----------------+             +-----------+-----------+
+      |   Local Data Volume   |             |     Local Iceberg Warehouse     |             |   Local Data Volume   |
+      |   (./DWH/sqlserver)   |             |        (./DWH/iceberg)          |             |     (./DWH/oracle)    |
+      +-----------------------+             +---------------------------------+             +-----------------------+
 
-      +-----------------------------------------------------------------------------------------------+
-      |                                     User Interfaces                                           |
-      |  [Airflow UI: 8080]  [Trino UI: 9080]  [Spark UI: 4040]  [Query UI: 5001]  [dbt Docs]         |
-      +-----------------------------------------------------------------------------------------------+
+      +-------------------------------------------------------------------------------------------------------------+
+      |                                              User Access Layer                                              |
+      +-----------------------+-----------------------+-----------------------+-----------------------+-------------+
+      |     Query UI (5001)   |     Trino UI (9080)   |    Airflow UI (8080)  |     Spark UI (4040)   |   dbt Docs  |
+      |   (Custom SQL Editor) |   (Query Monitoring)  |   (DAG Management)    |   (Job Monitoring)    | (Lineage/MD)|
+      +-----------------------+-----------------------+-----------------------+-----------------------+-------------+
 ```
 
 ## 📊 Using dbt for Transformations
@@ -283,6 +283,24 @@ from data_eng_lib import execute_trino_query
 
 results = execute_trino_query("SELECT * FROM iceberg.default.weather_raw LIMIT 10")
 ```
+
+## 🛡️ Data Governance with Trino
+Trino acts as the central security and governance layer for the entire Lakehouse.
+
+- **Centralized Access Control:** Manage permissions for SQL Server, Oracle, and Iceberg in one place.
+- **Fine-Grained Security:** Supports column-level masking (e.g., hiding PII) and row-level filtering (e.g., multi-tenancy) across all federated sources.
+- **Audit & Lineage:** Every query is logged at the gateway, providing a complete audit trail of who accessed what data and when.
+- **Integration:** Ready for enterprise governance engines like **Apache Ranger** or **Open Policy Agent (OPA)**.
+
+## 🏢 Enterprise Integration
+
+### Office 365 & Azure AD
+The stack is designed to integrate seamlessly with the Microsoft ecosystem:
+
+- **Authentication (SSO):** Both Trino and Airflow can be configured to use **Azure AD (Microsoft Entra ID)** for Single Sign-On.
+- **AD Group Mapping:** Map your corporate AD groups directly to Trino catalogs or Airflow roles (e.g., `Finance_AD_Group` -> `Oracle Finance Catalog`).
+- **Data Ingestion:** Use Airflow to ingest data directly from **SharePoint** or **OneDrive** using the Microsoft Graph API.
+- **Consumption:** Connect **Power BI** or **Excel** directly to Trino to build live reports that join data across your entire infrastructure.
 
 ## 🔧 Troubleshooting
 - **Memory Issues:** If services fail to start, ensure Docker has enough memory (8GB+ recommended).

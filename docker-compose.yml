@@ -251,9 +251,25 @@ services:
   spark-master:
     container_name: lakehouse-rjd-airflow-spark-master
     image: apache/spark:3.5.1
+    user: root
+    entrypoint: ["/bin/bash", "-c"]
+    command: 
+      - |
+        /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master &
+        sleep 5;
+        /opt/spark/sbin/start-thriftserver.sh \
+          --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0 \
+          --hiveconf hive.server2.thrift.port=10001 \
+          --hiveconf hive.server2.thrift.bind.host=0.0.0.0 \
+          --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
+          --conf spark.sql.catalog.spark_catalog.type=hadoop \
+          --conf spark.sql.catalog.spark_catalog.warehouse=/warehouse \
+          --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions;
+        tail -f /opt/spark/logs/*
     ports:
       - "7077:7077"
       - "4040:4040"
+      - "10001:10001"
     volumes:
       - ./spark/conf:/opt/spark/conf
       - ./DWH/iceberg:/warehouse
@@ -264,6 +280,8 @@ services:
   spark-worker:
     container_name: lakehouse-rjd-airflow-spark-worker
     image: apache/spark:3.5.1
+    user: root
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     depends_on:
       - spark-master
     environment:

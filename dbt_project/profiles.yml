@@ -1,0 +1,102 @@
+default:
+  target: dev
+  outputs:
+    # --- TRINO FEDERATED CONNECTIONS ---
+    # Default output (usually Iceberg via Trino)
+    dev:
+      type: trino
+      host: "{{ env_var('TRINO_HOST') }}"
+      port: "{{ env_var('TRINO_PORT') | int }}"
+      user: "{{ env_var('TRINO_USER') }}"
+      password: "{{ env_var('TRINO_PASSWORD', '') }}"
+      catalog: "{{ env_var('TRINO_CATALOG') }}"
+      schema: "{{ env_var('SCHEMA') }}"
+      threads: "{{ env_var('DBT_THREADS', '4') | int }}"
+      http_scheme: "{{ env_var('TRINO_HTTP_SCHEME', 'http') }}"
+      cert: "{{ env_var('TRINO_CERT', 'true') }}"
+      require_certificate_validation: true
+      prepared_statements_enabled: true
+      retries: "{{ env_var('TRINO_RETRIES', '3') | int }}"
+
+    # Example: Direct Iceberg Catalog via Trino
+    iceberg:
+      type: trino
+      host: "{{ env_var('TRINO_HOST', 'localhost') }}"
+      port: "{{ env_var('TRINO_PORT', '9080') | int }}"
+      user: "{{ env_var('TRINO_USER', 'admin') }}"
+      password: "{{ env_var('TRINO_PASSWORD', '') }}"
+      catalog: iceberg
+      schema: default
+      threads: 4
+      http_scheme: http
+      cert: true
+      require_certificate_validation: true
+      prepared_statements_enabled: true
+
+    # Example: SQL Server via Trino Connector
+    sqlserver:
+      type: trino
+      host: "{{ env_var('TRINO_HOST', 'localhost') }}"
+      port: "{{ env_var('TRINO_PORT', '9080') | int }}"
+      user: "{{ env_var('TRINO_USER', 'admin') }}"
+      password: "{{ env_var('TRINO_PASSWORD', '') }}"
+      catalog: sqlserver
+      schema: dbo
+      threads: 4
+      http_scheme: http
+      cert: true
+      require_certificate_validation: true
+      prepared_statements_enabled: true
+
+    # Example: Oracle via Trino Connector
+    oracle:
+      type: trino
+      host: "{{ env_var('TRINO_HOST', 'localhost') }}"
+      port: "{{ env_var('TRINO_PORT', '9080') | int }}"
+      user: "{{ env_var('TRINO_USER', 'admin') }}"
+      password: "{{ env_var('TRINO_PASSWORD', '') }}"
+      catalog: oracle
+      schema: pdbadmin
+      threads: 4
+      http_scheme: http
+      cert: true
+      require_certificate_validation: true
+      prepared_statements_enabled: true
+
+    # --- DIRECT CONNECTIONS (Requires additional dbt adapters) ---
+
+    # Direct SQL Server Connection (Requires dbt-sqlserver)
+    sqlserver_direct:
+      type: sqlserver
+      driver: "{{ env_var('SQLSERVER_DRIVER', 'ODBC Driver 18 for SQL Server') }}"
+      host: localhost
+      port: 1433
+      user: sa
+      password: Sqlserver!Password123
+      database: master
+      schema: dbo
+      threads: 1
+      encrypt: true
+      trust_cert: true
+
+    # Direct Oracle Connection (Requires dbt-oracle)
+    oracle_direct:
+      type: oracle
+      host: localhost
+      port: 1521
+      user: system
+      password: Oracle!Password123
+      service: FREEPDB1
+      database: FREEPDB1
+      schema: system
+      threads: 1
+      protocol: tcp
+
+    # Direct Iceberg Connection (via Spark Thrift Server - Requires dbt-spark)
+    spark_direct:
+      type: spark
+      method: thrift
+      host: localhost
+      port: 10001
+      schema: default
+      threads: 1

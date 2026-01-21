@@ -52,7 +52,6 @@ dbt-run:
 	pip install --upgrade pip && \
 	pip install -r dbt_project/dbt-requirements.txt && \
 	source dbt_project/dbt.env && \
-	cd dbt_project && \
 	exec /bin/bash
 
 .PHONY: services-up

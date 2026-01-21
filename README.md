@@ -85,6 +85,110 @@ This lab implements a **Medallion Architecture** (Bronze/Silver/Gold) using:
 - **Querying:** **Trino** acts as the central gateway, allowing you to join data across Iceberg, SQL Server, and Oracle in a single SQL query.
 - **Transformation:** **dbt** runs on top of Trino to transform raw data into analytics-ready tables.
 
+### Detailed Architecture Diagram
+
+```text
+                                     +---------------------------------------+
+                                     |           Airflow Orchestrator        |
+                                     |   (Scheduler, Worker, Webserver)      |
+                                     +---+--------------+--------------+-----+
+                                         |              |              |
+                  (1) Ingest             | (2) Process  | (3) Transform|
+                  +----------------------+              |              +----------------------+
+                  |                                     |                                     |
+                  v                                     v                                     v
+      +-----------+-----------+        +----------------+----------------+        +-----------+-----------+
+      | External Data Sources |        |         Spark Engine            |        |     dbt (on Trino)    |
+      | (APIs, S3, GCS, Azure)|        |    (Distributed Processing)     |        |  (Data Transformations)|
+      +-----------+-----------+        +----------------+----------------+        +-----------+-----------+
+                  |                                     |                                     |
+                  |                                     |                                     |
+                  +------------------+                  |                  +------------------+
+                                     |                  |                  |
+                                     v                  v                  v
+                               +-----+------------------+------------------+-----+
+                               |                 Trino Gateway                   |
+                               |            (Federated Query Engine)             |
+                               +---------+--------------+--------------+---------+
+                                         |              |              |
+                    +--------------------+              |              +--------------------+
+                    |                                   |                                   |
+                    v                                   v                                   v
+      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
+      |      SQL Server Catalog   |       |       Iceberg Catalog     |       |       Oracle Catalog      |
+      |    (Relational Source)    |       |      (Lakehouse Table)    |       |    (Relational Source)    |
+      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
+                    |                                   |                                   |
+                    | (JDBC)                            | (Iceberg API)                     | (JDBC)
+                    v                                   v                                   v
+      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
+      |    SQL Server Container   |       |      Hive Metastore       |       |      Oracle Container     |
+      |      (mssql-server)       |       |    (Metadata Management)  |       |       (oracle-free)       |
+      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
+                    |                                   |                                   |
+                    v                                   v                                   v
+      +-------------+-------------+       +-------------+-------------+       +-------------+-------------+
+      |    Local Data Volume      |       |    Local Iceberg Warehouse|       |    Local Data Volume      |
+      |   (./DWH/sqlserver)       |       |       (./DWH/iceberg)     |       |     (./DWH/oracle)        |
+      +---------------------------+       +---------------------------+       +---------------------------+
+
+      +-----------------------------------------------------------------------------------------------+
+      |                                     User Interfaces                                           |
+      |  [Airflow UI: 8080]  [Trino UI: 9080]  [Spark UI: 4040]  [Query UI: 5001]  [dbt Docs]         |
+      +-----------------------------------------------------------------------------------------------+
+```
+
+## 📊 Using dbt for Transformations
+dbt is used to manage transformations within the Trino catalogs.
+
+### Running dbt on Windows (PowerShell)
+To run dbt from your host machine, you must load the environment variables from the root `.env` file. A helper script is provided in the `dbt_project` directory.
+
+1. **Navigate to the dbt project:**
+   ```powershell
+   cd dbt_project
+   ```
+2. **Load environment variables and run dbt:**
+   ```powershell
+   # Load variables for the current session
+   . .\load_env.ps1
+   
+   # Run dbt commands
+   dbt debug
+   dbt run
+   ```
+   *Note: The `load_env.ps1` script automatically handles mapping `trino:8080` (internal) to `localhost:9080` (external) for local development.*
+
+### Running dbt on Linux / macOS / WSL2
+1. **Navigate to the dbt project:**
+   ```bash
+   cd dbt_project
+   ```
+2. **Source the environment variables:**
+   ```bash
+   source dbt.env
+   dbt debug
+   ```
+
+### Direct Database Connections (Optional)
+While Trino provides a unified federated layer, you can also connect dbt directly to the underlying databases. This requires installing additional adapters:
+```bash
+pip install dbt-sqlserver dbt-oracle dbt-spark[session]
+```
+
+Example commands for direct connections:
+```powershell
+# SQL Server Direct
+dbt debug --target sqlserver_direct
+
+# Oracle Direct
+dbt debug --target oracle_direct
+
+# Iceberg/Spark Direct
+dbt debug --target spark_direct
+```
+*Note: Direct connections may require local drivers (e.g., ODBC for SQL Server) to be installed on your host machine.*
+
 ## 🔗 Federated Query Examples
 Trino allows you to query multiple catalogs in a single SQL statement. See `scripts/federated_query_examples.sql` for the full DDL and DML setup scripts.
 

@@ -2,6 +2,9 @@ name: 'lakehouse_rjd_dbt'
 version: '1.0.0'
 config-version: 2
 
+flags:
+  require_certificate_validation: true
+
 profile: 'default'
 
 model-paths: ["models"]

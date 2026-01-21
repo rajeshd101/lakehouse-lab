@@ -29,8 +29,6 @@ default:
       schema: default
       threads: 4
       http_scheme: http
-      cert: true
-      require_certificate_validation: true
       prepared_statements_enabled: true
 
     # Example: SQL Server via Trino Connector
@@ -44,8 +42,6 @@ default:
       schema: dbo
       threads: 4
       http_scheme: http
-      cert: true
-      require_certificate_validation: true
       prepared_statements_enabled: true
 
     # Example: Oracle via Trino Connector
@@ -59,8 +55,6 @@ default:
       schema: pdbadmin
       threads: 4
       http_scheme: http
-      cert: true
-      require_certificate_validation: true
       prepared_statements_enabled: true
 
     # --- DIRECT CONNECTIONS (Requires additional dbt adapters) ---

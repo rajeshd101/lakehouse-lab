@@ -189,12 +189,10 @@ services:
       - "9083:9083"
     environment:
       SERVICE_NAME: metastore
-      HIVE_METASTORE_DB_TYPE: postgres
-      HIVE_METASTORE_DB_HOST: hive-metastore-db
-      HIVE_METASTORE_DB_NAME: metastore
-      HIVE_METASTORE_DB_USER: hive
-      HIVE_METASTORE_DB_PASS: hive
-      HIVE_METASTORE_WAREHOUSE_DIR: /iceberg/warehouse
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionURL: jdbc:postgresql://hive-metastore-db:5432/metastore
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionDriverName: org.postgresql.Driver
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionUserName: hive
+      HIVE_SITE_CONF_javax_jdo_option_ConnectionPassword: hive
       HIVE_SITE_CONF_hive_metastore_warehouse_dir: /iceberg/warehouse
     volumes:
       - ./DWH/iceberg:/iceberg/warehouse
@@ -230,7 +228,53 @@ services:
     networks:
       - lakehouse-net
 
+  # SQL Server - relational source
+  sqlserver:
+    container_name: lakehouse-rjd-sqlserver
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Sqlserver!Password123
+    ports:
+      - "1433:1433"
+    volumes:
+      - ./DWH/sqlserver/data:/var/opt/mssql/data
+    networks:
+      - lakehouse-net
+    restart: unless-stopped
+
+  # Oracle - relational source
+  oracle:
+    container_name: lakehouse-rjd-oracle
+    image: gvenzl/oracle-free:latest
+    environment:
+      - ORACLE_PASSWORD=Oracle!Password123
+    ports:
+      - "1521:1521"
+    volumes:
+      - ./DWH/oracle/data:/opt/oracle/oradata
+    networks:
+      - lakehouse-net
+    restart: unless-stopped
+
+  # Query UI - Custom SQL Editor
+  query-ui:
+    container_name: lakehouse-rjd-query-ui
+    build: ./query_ui
+    ports:
+      - "5001:5000"
+    environment:
+      - TRINO_HOST=trino
+      - TRINO_PORT=8080
+      - TRINO_USER=admin
+      - TRINO_CATALOG=iceberg
+      - SCHEMA=default
+    networks:
+      - lakehouse-net
+    depends_on:
+      - trino
+    restart: unless-stopped
+
 networks:
   lakehouse-net:
     driver: bridge
-

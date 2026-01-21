@@ -90,7 +90,7 @@ def read_and_log(sql):
 
 
 default_args = {
-    "owner": "Lakehouse Lab",
+    "owner": "Rajesh Daggupati",
     "depends_on_past": False,
     "start_date": datetime(2024, 1, 1),
     "email_on_failure": False,

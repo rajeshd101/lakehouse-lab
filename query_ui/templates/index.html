@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trino Query UI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .container { margin-top: 50px; }
+        #query-editor { height: 200px; font-family: monospace; }
+        .results-table { margin-top: 30px; background: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">Trino Federated Query UI</h2>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <textarea id="query-editor" class="form-control mb-3" placeholder="SELECT * FROM sqlserver.dbo.customers JOIN oracle.pdbadmin.orders ON ..."></textarea>
+                <button id="run-btn" class="btn btn-primary">Run Query</button>
+            </div>
+        </div>
+
+        <div id="error-alert" class="alert alert-danger mt-3 d-none"></div>
+
+        <div class="results-table table-responsive shadow-sm rounded">
+            <table id="results" class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr id="table-head"></tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('run-btn').addEventListener('click', async () => {
+            const query = document.getElementById('query-editor').value;
+            const errorAlert = document.getElementById('error-alert');
+            const tableHead = document.getElementById('table-head');
+            const tableBody = document.getElementById('table-body');
+
+            errorAlert.classList.add('d-none');
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            try {
+                const response = await fetch('/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    errorAlert.textContent = data.error;
+                    errorAlert.classList.remove('d-none');
+                    return;
+                }
+
+                // Build Header
+                data.columns.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col;
+                    tableHead.appendChild(th);
+                });
+
+                // Build Body
+                data.rows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    row.forEach(cell => {
+                        const td = document.createElement('td');
+                        td.textContent = cell;
+                        tr.appendChild(td);
+                    });
+                    tableBody.appendChild(tr);
+                });
+
+            } catch (err) {
+                errorAlert.textContent = "Failed to connect to server.";
+                errorAlert.classList.remove('d-none');
+            }
+        });
+    </script>
+</body>
+</html>

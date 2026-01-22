@@ -50,6 +50,7 @@ services:
       - ./plugins:/usr/local/airflow/plugins
       - ./DWH/airflow/logs:/usr/local/airflow/logs
       - ./simple_auth_manager_passwords.json:/usr/local/airflow/simple_auth_manager_passwords.json
+      - ./dbt_project:/usr/local/airflow/dbt_project
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -86,6 +87,7 @@ services:
       - ./plugins:/usr/local/airflow/plugins
       - ./DWH/airflow/logs:/usr/local/airflow/logs
       - ./simple_auth_manager_passwords.json:/usr/local/airflow/simple_auth_manager_passwords.json
+      - ./dbt_project:/usr/local/airflow/dbt_project
     restart: unless-stopped
     networks:
       - lakehouse-net
@@ -120,6 +122,7 @@ services:
       - ./plugins:/usr/local/airflow/plugins
       - ./DWH/airflow/logs:/usr/local/airflow/logs
       - ./simple_auth_manager_passwords.json:/usr/local/airflow/simple_auth_manager_passwords.json
+      - ./dbt_project:/usr/local/airflow/dbt_project
     restart: unless-stopped
     networks:
       - lakehouse-net

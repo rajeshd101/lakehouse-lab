@@ -76,6 +76,7 @@ services:
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
       AIRFLOW__API__SECRET_KEY: "local-dev-api-secret"
       AIRFLOW__API_AUTH__JWT_SECRET: "local-dev-jwt-secret"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
       TRINO_HOST: trino
       TRINO_PORT: "8080"
       TRINO_USER: admin
@@ -111,6 +112,7 @@ services:
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
       AIRFLOW__API__SECRET_KEY: "local-dev-api-secret"
       AIRFLOW__API_AUTH__JWT_SECRET: "local-dev-jwt-secret"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
       TRINO_HOST: trino
       TRINO_PORT: "8080"
       TRINO_USER: admin
@@ -141,6 +143,7 @@ services:
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:ADMIN
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /usr/local/airflow/simple_auth_manager_passwords.json
       AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
     volumes:
       - ./dags:/usr/local/airflow/dags
       - ./include:/usr/local/airflow/include

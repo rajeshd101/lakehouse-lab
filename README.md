@@ -306,3 +306,91 @@ The stack is designed to integrate seamlessly with the Microsoft ecosystem:
 - **Memory Issues:** If services fail to start, ensure Docker has enough memory (8GB+ recommended).
 - **Port Conflicts:** If ports 8080, 9080, or 1433 are in use, modify the `ports` section in `docker-compose.yml`.
 - **Logs:** View service logs using `docker-compose logs -f [service_name]`.
+
+## 📖 Connectivity Reference
+
+This section contains the configuration templates for the various connectors used in this project.
+
+### Trino Catalog Configurations (`trino/catalog/`)
+
+#### Iceberg (`iceberg.properties`)
+```properties
+connector.name=iceberg
+iceberg.catalog.type=HIVE_METASTORE
+hive.metastore.uri=thrift://hive-metastore:9083
+iceberg.file-format=PARQUET
+iceberg.format-version=2
+```
+
+#### SQL Server (`sqlserver.properties`)
+```properties
+connector.name=sqlserver
+connection-url=jdbc:sqlserver://sqlserver:1433;encrypt=false
+connection-user=sa
+connection-password=Sqlserver!Password123
+```
+
+#### Oracle (`oracle.properties`)
+```properties
+connector.name=oracle
+connection-url=jdbc:oracle:thin:@oracle:1521/FREEPDB1
+connection-user=system
+connection-password=Oracle!Password123
+```
+
+#### Snowflake (Template)
+```properties
+connector.name=snowflake
+snowflake.account=${ENV:SNOWFLAKE_ACCOUNT}
+snowflake.user=${ENV:SNOWFLAKE_USER}
+snowflake.password=${ENV:SNOWFLAKE_PASSWORD}
+snowflake.warehouse=COMPUTE_WH
+snowflake.database=YOUR_DB
+snowflake.role=ALL_USERS_ROLE
+```
+
+### Airflow Connection Templates
+
+#### Amazon S3 (AWS)
+- **Conn Id**: `aws_default`
+- **Conn Type**: `Amazon Web Services`
+- **Extra**:
+```json
+{
+  "aws_access_key_id": "YOUR_ACCESS_KEY",
+  "aws_secret_access_key": "YOUR_SECRET_KEY",
+  "region_name": "us-east-1"
+}
+```
+
+#### Google Cloud Storage (GCS)
+- **Conn Id**: `google_cloud_default`
+- **Conn Type**: `Google Cloud`
+- **Keyfile JSON**: Paste your service account JSON key here.
+
+#### Azure Blob Storage
+- **Conn Id**: `azure_default`
+- **Conn Type**: `Azure Blob Storage`
+- **Extra**:
+```json
+{
+  "connection_string": "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
+}
+```
+
+#### Snowflake
+- **Conn Id**: `snowflake_default`
+- **Conn Type**: `Snowflake`
+- **Host**: `your_account.snowflakecomputing.com`
+- **Schema**: `YOUR_SCHEMA`
+- **Login**: `YOUR_USER`
+- **Password**: `YOUR_PASSWORD`
+- **Extra**:
+```json
+{
+  "account": "your_account",
+  "warehouse": "COMPUTE_WH",
+  "database": "YOUR_DB",
+  "region": "us-west-2"
+}
+```
